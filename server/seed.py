@@ -1,63 +1,49 @@
-#!/usr/bin/env python3
-
-from random import randint, choice as rc
-
-from faker import Faker
-
-from app import app
-from models import db, Recipe, User
-
-fake = Faker()
+from app import app, db
+from models import User, Recipe, DEFAULT_IMAGE_URL
 
 with app.app_context():
-
     print("Deleting all records...")
     Recipe.query.delete()
     User.query.delete()
+    db.session.commit()
 
-    fake = Faker()
+    print("Seeding users...")
+    users = [
+        User(username="alice", bio="I love cooking!", image_url=DEFAULT_IMAGE_URL),
+        User(username="bob", bio="Healthy recipes enthusiast", image_url=DEFAULT_IMAGE_URL),
+        User(username="charlie", bio="Pasta is life!", image_url=DEFAULT_IMAGE_URL)
+    ]
 
-    print("Creating users...")
-
-    # make sure users have unique usernames
-    users = []
-    usernames = []
-
-    for i in range(20):
-        
-        username = fake.first_name()
-        while username in usernames:
-            username = fake.first_name()
-        usernames.append(username)
-
-        user = User(
-            username=username,
-            bio=fake.paragraph(nb_sentences=3),
-            image_url=fake.url(),
-        )
-
-        user.password_hash = user.username + 'password'
-
-        users.append(user)
+    # Set passwords
+    for u in users:
+        u.set_password("password123")
 
     db.session.add_all(users)
+    db.session.commit()  # Commit so users have IDs for foreign keys
 
-    print("Creating recipes...")
-    recipes = []
-    for i in range(100):
-        instructions = fake.paragraph(nb_sentences=8)
-        
-        recipe = Recipe(
-            title=fake.sentence(),
-            instructions=instructions,
-            minutes_to_complete=randint(15,90),
+    print("Seeding recipes...")
+    recipes = [
+        Recipe(
+            title="Pancakes",
+            instructions="Mix ingredients thoroughly and cook on a hot griddle until golden brown.",
+            minutes_to_complete=15,
+            user_id=users[0].id
+        ),
+        Recipe(
+            title="Salad",
+            instructions="Chop fresh vegetables and toss them with a light vinaigrette dressing.",
+            minutes_to_complete=10,
+            user_id=users[1].id
+        ),
+        Recipe(
+            title="Spaghetti",
+            instructions="Boil pasta until al dente, prepare a rich tomato sauce, and combine carefully.",
+            minutes_to_complete=30,
+            user_id=users[2].id
         )
-
-        recipe.user = rc(users)
-
-        recipes.append(recipe)
+    ]
 
     db.session.add_all(recipes)
-    
     db.session.commit()
-    print("Complete.")
+
+    print("Seeding done!")
